@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>hdza's Puffium — restock alerts for Windows</title>
+  <meta name="description" content="Puffium watches Amazon, Target and any store you add, and tells you the second something you want is back in stock or drops in price. Free for Windows.">
+  <meta property="og:title" content="hdza's Puffium">
+  <meta property="og:description" content="Restock & price-drop alerts for Windows, with a guarded auto-buy.">
+  <meta property="og:image" content="assets/watchlist.png">
+  <meta name="theme-color" content="#0e0d14">
+  <link rel="icon" href="assets/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0d14;
+      --bg2: #13121b;
+      --card: #191823;
+      --stroke: #2a2838;
+      --text: #eeedf5;
+      --muted: #9a97b0;
+      --accent: #c4a1ff;
+      --violet: #8b5cf6;
+      --pink: #ec4899;
+      --good: #34d399;
+      --warn: #fbbf24;
+      --grad: linear-gradient(135deg, var(--violet), var(--pink));
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 Inter, "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+    .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+
+    /* nav */
+    nav {
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: blur(14px);
+      background: rgba(14, 13, 20, .72);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+    .brand img { width: 30px; height: 30px; }
+    .brand span { color: var(--muted); font-weight: 500; }
+    .links { display: flex; gap: 28px; align-items: center; font-size: 14.5px; color: var(--muted); }
+    .links a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 13px 22px; border-radius: 12px;
+      font-weight: 600; font-size: 15px;
+      transition: transform .15s ease, box-shadow .2s ease, background .2s;
+    }
+    .btn-primary { background: var(--grad); color: #fff; box-shadow: 0 10px 30px -10px rgba(236, 72, 153, .6); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 40px -12px rgba(236, 72, 153, .75); }
+    .btn-ghost { border: 1px solid var(--stroke); background: rgba(255,255,255,.03); }
+    .btn-ghost:hover { background: rgba(255,255,255,.07); }
+    .btn-sm { padding: 9px 16px; font-size: 14px; border-radius: 10px; }
+
+    /* hero */
+    .hero { position: relative; padding: 88px 0 40px; text-align: center; }
+    .glow {
+      position: absolute; inset: -200px 0 auto; height: 700px; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(500px 300px at 35% 40%, rgba(139, 92, 246, .28), transparent 70%),
+        radial-gradient(500px 300px at 65% 35%, rgba(236, 72, 153, .22), transparent 70%);
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px;
+      background: rgba(196, 161, 255, .1); border: 1px solid rgba(196, 161, 255, .25);
+      color: var(--accent); font-size: 13.5px; font-weight: 500;
+    }
+    .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 10px var(--good); }
+    h1 {
+      font-size: clamp(40px, 7vw, 72px); line-height: 1.04; letter-spacing: -.035em;
+      margin: 22px auto 18px; max-width: 880px; font-weight: 800;
+    }
+    .grad-text { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lede { color: var(--muted); font-size: clamp(17px, 2.2vw, 20px); max-width: 640px; margin: 0 auto 34px; }
+    .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .meta { margin-top: 16px; color: var(--muted); font-size: 13.5px; }
+
+    .shot {
+      margin: 64px auto 0; max-width: 1040px;
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 40px 120px -30px rgba(139, 92, 246, .45), 0 0 0 1px rgba(0,0,0,.4);
+      transform: perspective(1600px) rotateX(6deg);
+      transition: transform .6s ease;
+    }
+    .shot:hover { transform: perspective(1600px) rotateX(0); }
+
+    /* sections */
+    section { padding: 96px 0; }
+    .eyebrow { color: var(--accent); font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { font-size: clamp(30px, 4.4vw, 44px); line-height: 1.12; letter-spacing: -.025em; margin: 12px 0 14px; font-weight: 700; }
+    .sub { color: var(--muted); font-size: 17.5px; max-width: 620px; margin: 0; }
+    .head { margin-bottom: 48px; }
+    .center { text-align: center; }
+    .center .sub { margin-inline: auto; }
+
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+    .card {
+      background: var(--card); border: 1px solid var(--stroke); border-radius: var(--radius);
+      padding: 26px; transition: border-color .2s, transform .2s;
+    }
+    .card:hover { border-color: #3d3a52; transform: translateY(-3px); }
+    .icon {
+      width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+      background: rgba(196, 161, 255, .12); color: var(--accent); margin-bottom: 18px;
+    }
+    .icon svg { width: 22px; height: 22px; }
+    .card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    /* split feature rows */
+    .split { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; }
+    .split + .split { margin-top: 96px; }
+    .split.flip > :first-child { order: 2; }
+    .frame { border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 30px 80px -30px rgba(0,0,0,.8); }
+    .checks { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 12px; }
+    .checks li { display: flex; gap: 12px; color: #cfcce0; }
+    .checks li::before {
+      content: ""; flex: none; width: 20px; height: 20px; margin-top: 3px; border-radius: 6px;
+      background: var(--grad) center/12px no-repeat;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"), var(--grad);
+    }
+
+    /* steps */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: s; }
+    .step { position: relative; padding: 26px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--stroke); }
+    .step::before {
+      counter-increment: s; content: counter(s);
+      display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+      background: var(--grad); font-weight: 700; margin-bottom: 16px;
+    }
+    .step h3 { margin: 0 0 6px; font-size: 17px; }
+    .step p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    /* safety */
+    .safety {
+      background: linear-gradient(160deg, #2a2312, #1b1610 60%);
+      border: 1px solid #4a3c1a; border-radius: 24px; padding: 48px;
+    }
+    .safety .eyebrow { color: var(--warn); }
+    .rails { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 32px; margin-top: 28px; }
+    .rail { display: flex; gap: 12px; color: #f5e2b0; font-size: 15.5px; }
+    .rail b { color: #fff3d1; font-weight: 600; }
+    .rail svg { flex: none; width: 20px; height: 20px; color: var(--warn); margin-top: 3px; }
+
+    /* faq */
+    .faq { max-width: 780px; margin: 0 auto; display: grid; gap: 10px; }
+    details { background: var(--card); border: 1px solid var(--stroke); border-radius: 14px; padding: 4px 22px; }
+    details[open] { border-color: #3d3a52; }
+    summary { cursor: pointer; list-style: none; padding: 16px 0; font-weight: 600; display: flex; justify-content: space-between; gap: 16px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--accent); font-size: 22px; line-height: 1; transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { margin: 0 0 18px; color: var(--muted); }
+    code { background: rgba(255,255,255,.07); padding: 2px 6px; border-radius: 6px; font-size: .92em; }
+
+    /* download */
+    .download {
+      position: relative; overflow: hidden; text-align: center;
+      border-radius: 28px; padding: 72px 24px;
+      background: linear-gradient(135deg, #2a1b47, #3a1631);
+      border: 1px solid #4b3170;
+    }
+    .download img { width: 76px; margin: 0 auto 20px; }
+    .download h2 { margin-top: 0; }
+    .download .sub { margin: 0 auto 30px; color: #d6c9ee; }
+    .req { margin-top: 18px; color: #bfaee0; font-size: 13.5px; }
+
+    footer { padding: 40px 0 56px; color: var(--muted); font-size: 13.5px; border-top: 1px solid rgba(255,255,255,.05); }
+    footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    footer p { margin: 0; max-width: 640px; }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; }
+      .split, .split.flip { grid-template-columns: 1fr; gap: 28px; }
+      .split.flip > :first-child { order: 0; }
+      .links a:not(.btn) { display: none; }
+    }
+    @media (max-width: 600px) {
+      .grid, .steps, .rails { grid-template-columns: 1fr; }
+      .hero { padding-top: 56px; }
+      section { padding: 64px 0; }
+      .safety { padding: 28px 20px; }
+      .shot { margin-top: 40px; transform: none; }
+      .brand span { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .shot { transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="wrap">
+      <a class="brand" href="#"><img src="assets/logo.png" alt=""><span>hdza's</span> Puffium</a>
+      <div class="links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#safety">Auto-buy</a>
+        <a href="#faq">FAQ</a>
+        <a class="btn btn-primary btn-sm js-download" href="#download">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="glow"></div>
+    <div class="wrap">
+      <span class="pill"><i></i> Free for Windows 10 &amp; 11</span>
+      <h1>Never miss a <span class="grad-text">restock</span> again.</h1>
+      <p class="lede">Puffium watches Amazon, Target and any store you add, and pings you the second something you want is back in stock — or drops to your price.</p>
+      <div class="cta">
+        <a class="btn btn-primary js-download" href="#download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+      <p class="meta">One file · nothing to install · no account needed</p>
+      <div class="shot"><img src="assets/watchlist.png" alt="Puffium's watchlist showing products with in-stock and out-of-stock tags and prices" width="1200" height="780"></div>
+    </div>
+  </header>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="head center reveal">
+        <div class="eyebrow">Features</div>
+        <h2>Your personal restock lookout</h2>
+        <p class="sub">Paste a link and forget about it. Puffium does the refreshing so you don't have to.</p>
+      </div>
+      <div class="grid">
+        <div class="card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+          <h3>Instant alerts</h3>
+          <p>A Windows pop-up with a chime the moment something comes back — click it to jump straight to buying.</p>
+        </div>
+        <div class="card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
+          <h3>Alerts on your phone</h3>
+          <p>Connect a Discord channel and get a message with the price, the store and a buy link, wherever you are.</p>
+        </div>
+        <div class="card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+          <h3>Price-drop alerts</h3>
+          <p>Set the price you'd happily pay. Puffium tells you when it gets there.</p>
+        </div>
+        <div class="card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></div>
+          <h3>One-click add to cart</h3>
+          <p>Puffium's built-in browser puts one in your Amazon or Target cart for you, then shows you the cart to check out.</p>
+        </div>
+        <div class="card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg></div>
+          <h3>Your local Target</h3>
+          <p>Enter your ZIP, pick your store, and Puffium checks pickup and shipping stock right where you are.</p>
+        </div>
+        <div class="card reveal">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+          <h3>Any store you like</h3>
+          <p>Amazon and Target are built in. Add other shops in seconds and switch any of them on or off.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="background: var(--bg2);">
+    <div class="wrap">
+      <div class="head center reveal">
+        <div class="eyebrow">How it works</div>
+        <h2>Set up in about two minutes</h2>
+        <p class="sub">A friendly setup wizard walks you through everything the first time you open it.</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal"><h3>Download &amp; open</h3><p>It's a single file. Double-click it and the setup wizard pops up.</p></div>
+        <div class="step reveal"><h3>Sign in once</h3><p>Log in to Amazon or Target inside Puffium so it can fill your cart.</p></div>
+        <div class="step reveal"><h3>Paste a link</h3><p>Copy any product link and drop it into your watchlist.</p></div>
+        <div class="step reveal"><h3>Get pinged</h3><p>Leave it running in the tray. You'll hear about it the moment it restocks.</p></div>
+      </div>
+
+      <div class="split reveal" style="margin-top: 96px;">
+        <div>
+          <div class="eyebrow">Made for everyone</div>
+          <h2>No tech skills needed</h2>
+          <p class="sub">Puffium explains itself in plain English. There's a built-in Guide that covers every button, and the setup wizard asks only for what it needs.</p>
+          <ul class="checks">
+            <li>Colored tags tell you at a glance: in stock, sold out, or waiting</li>
+            <li>Keeps watching quietly from the system tray</li>
+            <li>Backs off politely if a store asks it to slow down</li>
+          </ul>
+        </div>
+        <div class="frame"><img src="assets/setup.png" alt="Puffium's welcome screen in the setup wizard" loading="lazy" width="1200" height="780"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="safety">
+    <div class="wrap">
+      <div class="split flip reveal" style="margin-bottom: 56px;">
+        <div>
+          <div class="eyebrow">Auto-buy</div>
+          <h2>Fast when it counts. Careful always.</h2>
+          <p class="sub">For things that sell out in minutes, auto-buy can put one in your cart the instant it restocks, at a price you've already approved. You still press the final checkout button, so there are never any surprise orders.</p>
+        </div>
+        <div class="frame"><img src="assets/autobuy.png" alt="Puffium's auto-buy settings with safety limits" loading="lazy" width="1200" height="780"></div>
+      </div>
+
+      <div class="safety reveal">
+        <div class="eyebrow">Safety rails, always on</div>
+        <h2 style="margin-bottom: 0;">It can't go on a shopping spree.</h2>
+        <div class="rails">
+          <div class="rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><span><b>Off until you arm it</b>, and it switches itself off again after 12 hours.</span></div>
+          <div class="rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><span><b>Only items you pick</b>, each with a max price you set.</span></div>
+          <div class="rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><span><b>Always quantity 1</b>, and each item fires only once.</span></div>
+          <div class="rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><span><b>Daily limits</b> on how many buys and how much spending, plus a cooldown between buys.</span></div>
+          <div class="rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><span><b>Double-checks stock</b> before acting, so a glitch can't set it off.</span></div>
+          <div class="rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg><span><b>One big “Stop everything” button</b> that shuts it all off instantly.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" style="background: var(--bg2);">
+    <div class="wrap">
+      <div class="head center reveal">
+        <div class="eyebrow">FAQ</div>
+        <h2>Questions, answered</h2>
+      </div>
+      <div class="faq reveal">
+        <details>
+          <summary>Is it free?</summary>
+          <p>Yes. No account, no subscription, no ads.</p>
+        </details>
+        <details>
+          <summary>Do I have to give Puffium my card details?</summary>
+          <p>No, and it'll never ask. When you check out, Amazon or Target uses the card already saved in your account. Puffium never sees your card number or passwords.</p>
+        </details>
+        <details>
+          <summary>Will it place orders on its own?</summary>
+          <p>No. Puffium can put an item in your cart and open checkout, but you always press the final “Place order” button yourself.</p>
+        </details>
+        <details>
+          <summary>Windows says “Windows protected your PC” when I open it.</summary>
+          <p>Windows shows that for new apps from small developers that haven't paid for a code-signing certificate. Click <b>More info</b> → <b>Run anyway</b>. You only need to do this once.</p>
+        </details>
+        <details>
+          <summary>Does it need to stay open?</summary>
+          <p>It needs to be running to watch, but closing the window doesn't stop it. It keeps going quietly in the system tray by your clock. Right-click the tray icon and choose Exit to quit completely.</p>
+        </details>
+        <details>
+          <summary>Where is my data kept?</summary>
+          <p>On your computer only, in <code>%AppData%\Puffium</code>. Puffium talks only to the stores you watch and to your Discord channel if you set one up.</p>
+        </details>
+        <details>
+          <summary>Does it work on Mac or my phone?</summary>
+          <p>Puffium is for Windows 10 and 11. To get alerts on your phone, connect a Discord channel and turn on Discord notifications.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="wrap">
+      <div class="download reveal">
+        <img src="assets/logo.png" alt="">
+        <h2>Get Puffium</h2>
+        <p class="sub">Download, double-click, and you'll be watching your first product in a couple of minutes.</p>
+        <a class="btn btn-primary js-download" href="#download">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+          Download for Windows
+        </a>
+        <p class="req">Windows 10 or 11 (64-bit) · about 70 MB · <a class="js-releases" href="#" style="text-decoration: underline;">all versions</a></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="brand"><img src="assets/logo.png" alt=""><span>hdza's</span> Puffium</div>
+      <p>Puffium is an independent project and isn't affiliated with, endorsed by, or sponsored by Amazon, Target, or Discord. All trademarks belong to their owners.</p>
+    </div>
+  </footer>
+
+  <script>
+    // ── Set this to your GitHub "username/repository" ──────────────────────
+    const REPO = "YOUR-GITHUB-USERNAME/puffium";
+    const FILE = "Puffium.exe"; // name of the .exe you attach to each GitHub release
+    // ───────────────────────────────────────────────────────────────────────
+
+    const configured = !REPO.startsWith("YOUR-");
+    document.querySelectorAll(".js-download").forEach(a => {
+      if (configured) a.href = `https://github.com/${REPO}/releases/latest/download/${FILE}`;
+    });
+    document.querySelectorAll(".js-releases").forEach(a => {
+      a.href = configured ? `https://github.com/${REPO}/releases` : "#download";
+    });
+
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+  </script>
+</body>
+</html>
